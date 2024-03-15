@@ -1,0 +1,14 @@
+{
+    "name": "wolfram",
+    "description": "Acess to the Wolfram|Alpha computational knowledge engine",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The query to send to Wolfram|Alpha"
+            }
+        },
+        "required": ["query"]
+    }
+}

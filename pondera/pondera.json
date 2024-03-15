@@ -1,0 +1,34 @@
+{
+    "name": "pondera",
+    "description": "A powerful and flexible search engine plugin for LLMs.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "The search query or url."
+            },
+            "type": {
+                "type": "string",
+                "description": "The type of search to perform.",
+                "enum": ["quick", "deep"]
+            },
+            "focus": {
+                "type": "string",
+                "description": "The focus of the search.",
+                "enum": ["web", "news", "reddit", "academia", "video"]
+            },
+            "country": {
+                "type": "string",
+                "description": "Two letter country code.",
+                "default": "US"
+            },
+            "freshness": {
+                "type": "string",
+                "description": "The freshness of the results.",
+                "enum": ["24h", "week", "month", "year", "all"]
+            }
+        },
+        "required": ["query", "type", "focus", "country", "freshness"]
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "description": "Get transcript from YouTube Video by ID",
+    "name": "youtube",
+    "parameters": {
+        "properties": {
+            "video_id": {
+                "description": "Id of the YouTube Video",
+                "type": "string"
+            }
+        },
+        "required": [
+            "video_id"
+        ],
+        "type": "object"
+    }
+}

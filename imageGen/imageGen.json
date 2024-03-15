@@ -1,0 +1,30 @@
+{
+    "name": "imageGen",
+    "description": "Generates an image based on the provided prompt and specifications.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "prompt": {
+                "type": "string",
+                "description": "The prompt to generate the image from."
+            },
+            "aspect_ratio": {
+                "type": "string",
+                "description": "The aspect ratio of the image to be generated.",
+                "enum": ["square", "landscape", "portrait"]
+            },
+            "num_images": {
+                "type": "integer",
+                "description": "The number of images to generate.",
+                "minimum": 1,
+                "maximum": 2
+            },
+            "model": {
+                "type": "string",
+                "description": "The model to use for generating the image.",
+                "enum": ["sd-xl", "sd-xl-quick", "playground-v2", "open-dalle", "dall-e-3", "dalle-3-hd"]
+            }
+        },
+        "required": ["prompt", "aspect_ratio", "num_images", "model"]
+    }
+}                          
