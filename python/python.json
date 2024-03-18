@@ -1,0 +1,14 @@
+{
+    "name": "python",
+    "description": "Execute Python code in a networked notebook like environment.",
+    "parameters": {
+        "type": "object",
+        "properties": {
+            "code": {
+                "type": "string",
+                "description": "The Python code to execute."
+            }
+        },
+        "required": ["code"]
+    }
+}

@@ -71,3 +71,10 @@ Wrapper for multiple ImageGen models.
 - Packages: replicate, requests, openai
 - Set your "OPENAI_API_KEY"
 - Set your "REPLICATE_API_KEY"
+
+## Python 
+
+Python Interpreter (using a notebook like output) with Ipython. 
+
+**Installation**
+- Packages: IPython + any packages you may aditionally want for a code interpreter

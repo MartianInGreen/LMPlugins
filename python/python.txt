@@ -1,0 +1,17 @@
+numpy
+scipy
+pypdf2
+pandas
+matplotlib
+pillow
+opencv-python-headless
+requests
+bs4
+geopandas
+geopy
+yfinance
+seaborn
+openpyxl
+litellm
+replicate
+openai
