@@ -96,8 +96,25 @@ window.addEventListener('load', function() {
       setInterval(() => {
         const span = document.getElementsByClassName('truncate max-w-[100px] sm:max-w-lg')[0];
         const buttonText = span.textContent;
-  
+
         updateLocalStorageBasedOnText(buttonText);
+        observer.disconnect();
+
+        // Creating a MutationObserver to observe changes in the button
+        const observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'childList' || mutation.type === 'characterData') {
+              const newTextContent = mutation.target.textContent;
+              updateLocalStorageBasedOnText(newTextContent);
+            }
+          });
+        });
+
+        // Configuration of the observer:
+        const config = { childList: true, characterData: true, subtree: true };
+
+        // Pass in the target node, as well as the observer options
+        observer.observe(span, config);
       }, 2000);
     }, 500);
   });
