@@ -47,15 +47,23 @@ def lambda_handler(event, context):
         packages = None
 
     # Create a new StringIO object
+    print("Creating a new StringIO object")
     buffer = io.StringIO()
 
     # Redirect stdout to the buffer
     with contextlib.redirect_stdout(buffer):
+        os.chdir("./tmp")
         IPython.start_ipython(argv=['-c', f'{code}'])
 
     # Get the contents of the buffer
-    output = buffer.getvalue()
-    output = re.sub(r'\x1b\[.*?[@-~]|\x1b].*?\x07', '', output)
+    try: 
+        output = buffer.getvalue()
+        output = re.sub(r'\x1b\[.*?[@-~]|\x1b].*?\x07', '', output)
+
+        if output == "" or output == None:
+            output = "No output"
+    except:
+        output = "No output"
 
     return_output = {
         'output': output
@@ -64,3 +72,17 @@ def lambda_handler(event, context):
     print(return_output)
 
     return return_output
+
+if __name__ == "__main__":
+    os.environ["SERVICE_API_KEY"] = "test"
+
+    event = {
+        "headers": {
+            "x-api-key": os.getenv("SERVICE_API_KEY")
+        },
+        "body": {
+            "code": "from matplotlib import pyplot as plt\nplot = plt.plot([1, 2, 3, 4])\nplot.save('test.png')",
+        }
+    }
+
+    lambda_handler(event, None)
