@@ -58,7 +58,7 @@ window.addEventListener('load', function() {
                 }, 250);
 
                 console.log('Setting search input value to: ', searchInput.value)
-            }, 3500); // YOU SHOULD PROBABLY CHANGE THIS! (Set to something like 500) I only have it this high so my other extensions have time to turn on streaming :) 
+            }, 500); // YOU SHOULD PROBABLY CHANGE THIS! (Set to something like 500) I only have it this high so my other extensions have time to turn on streaming :) 
         }
     }, 500);
 });
