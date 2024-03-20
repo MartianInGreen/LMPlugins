@@ -17,8 +17,15 @@ window.addEventListener('load', function() {
     
         // Dispatch the event
         window.dispatchEvent(storageEvent);
+
+        const span = document.getElementsByClassName('truncate max-w-[100px] sm:max-w-lg')[0];
+
+        if (newValue === true) {
+          span.style.color = 'green';
+        }else if (newValue === false) {
+          span.style.color = 'red';
+        }
     }
-  
       // get span by classes
       setInterval(() => {
         const span = document.getElementsByClassName('truncate max-w-[100px] sm:max-w-lg')[0];
