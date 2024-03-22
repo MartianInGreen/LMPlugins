@@ -26,17 +26,72 @@ window.addEventListener('load', function() {
           span.style.color = 'red';
         }
     }
+      let overrideAutoStreaming = false;
+
       // get span by classes
       setInterval(() => {
         const span = document.getElementsByClassName('truncate max-w-[100px] sm:max-w-lg')[0];
         const buttonText = span.textContent;
 
-        if (buttonText.includes('Wrapper')) {
+        if (buttonText.includes('Wrapper') && !overrideAutoStreaming) {
           updateStorage("TM_useStreaming", false);
-        }else{
+        }else if (!overrideAutoStreaming){
           updateStorage("TM_useStreaming", true);
         }
       }, 100);
+
+      setInterval(() => {
+        // check if button exists
+        if (document.querySelector('[data-element-id="toggle-streaming-button"]')) {
+          return;
+        }
+
+        // Add a quick enable/disable button for the streaming feature under data-element-id="current-chat-title"
+        const enableAutoStreamingButton = document.createElement('button');
+        enableAutoStreamingButton.textContent = 'Auto-Streaming';
+        enableAutoStreamingButton.style.marginLeft = '10px';
+        enableAutoStreamingButton.style.cursor = 'pointer';
+        enableAutoStreamingButton.dataset.elementId = 'toggle-streaming-button';
+        enableAutoStreamingButton.style.color = 'green';
+        enableAutoStreamingButton.onclick = function() {
+          // set the overrideAutoStreaming to opposite of current value
+          if (overrideAutoStreaming) {
+            overrideAutoStreaming = false;
+            enableAutoStreamingButton.style.color = 'green'
+          } else {
+            overrideAutoStreaming = true;
+            enableAutoStreamingButton.style.color = 'red'
+          }
+        };
+
+        // Add a quick enable/disable button for the streaming feature under data-element-id="current-chat-title"
+        const currentChatTitle = document.querySelector('[data-element-id="current-chat-title"]');
+        const button = document.createElement('button');
+        button.textContent = 'Streaming';
+        button.style.marginLeft = '10px';
+        button.style.cursor = 'pointer';
+        button.dataset.elementId = 'toggle-streaming-button';
+        button.onclick = function() {
+          const useStreaming = localStorage.getItem('TM_useStreaming') === 'true';
+          updateStorage('TM_useStreaming', !useStreaming);
+          overrideAutoStreaming = true;
+          enableAutoStreamingButton.style.color = 'red';
+
+          if (!useStreaming) {
+            button.style.color = 'green';
+          } else {
+            button.style.color = 'red';
+          }
+        };
+
+        // Append after first child (as second element) but before the current second element
+        const child = currentChatTitle.children[1];
+        
+        // Create one div to hold both buttons
+        child.appendChild(button);
+        child.appendChild(enableAutoStreamingButton);
+
+      }, 500)
     }, 500);
   });
   

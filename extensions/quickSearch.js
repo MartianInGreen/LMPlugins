@@ -24,41 +24,57 @@ window.addEventListener('load', function() {
             });
 
             setTimeout(function() {
-                // Get the search input
-                const searchInput = document.querySelector('[data-element-id="chat-input-textbox"]'); // is a textarea
+                const span = document.getElementsByClassName('truncate max-w-[100px] sm:max-w-lg')[0];
+                span.click();
 
-                // Press the "/" key to focus the search input
-                window.dispatchEvent(
-                    new KeyboardEvent("keydown", {
-                        altKey: false,
-                        code: "Slash",
-                        ctrlKey: false,
-                        isComposing: false,
-                        key: "/",
-                        location: 0,
-                        metaKey: false,
-                        repeat: false,
-                        shiftKey: false,
-                        which: 191,
-                        charCode: 0,
-                        keyCode: 191,
-                    })
-                );
+                const modelListContainer = document.getElementsByClassName('absolute left-4 right-4 sm:right-auto sm:left-0 z-10 mt-2 sm:w-[380px] origin-top-right divide-y divide-gray-100 dark:divide-gray-700 rounded-md bg-white dark:bg-zinc-900 shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none p-2 transform opacity-100 scale-100')[0];
                 
-                searchInput.textContent = decodedQuery;
-                searchInput.dispatchEvent(new Event('input', { bubbles: true }));
-                searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+                setTimeout(function() {
+                    // Look through all children (and children of children...) and find "Anthropic: Claude 3 Haiku (self-moderated)"
+                    const modelList = document.getElementsByClassName('truncate max-w-[180px]');
+                    for (let i = 0; i < modelList.length; i++) {
+                        const model = modelList[i];
+                        if (model.innerText.includes('Anthropic: Claude 3 Haiku (self-moderated)')) {
+                            model.click();
+                        }
+                    }
 
-                setTimeout(function(){
-                    // Get the search button
-                    const sendButton = document.querySelector('[data-element-id="send-button"]');
+                    // Get the search input
+                    const searchInput = document.querySelector('[data-element-id="chat-input-textbox"]'); // is a textarea
 
-                    // Click the search button
-                    sendButton.click();
+                    // Press the "/" key to focus the search input
+                    window.dispatchEvent(
+                        new KeyboardEvent("keydown", {
+                            altKey: false,
+                            code: "Slash",
+                            ctrlKey: false,
+                            isComposing: false,
+                            key: "/",
+                            location: 0,
+                            metaKey: false,
+                            repeat: false,
+                            shiftKey: false,
+                            which: 191,
+                            charCode: 0,
+                            keyCode: 191,
+                        })
+                    );
+                    
+                    searchInput.textContent = decodedQuery;
+                    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    searchInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+                    setTimeout(function(){
+                        // Get the search button
+                        const sendButton = document.querySelector('[data-element-id="send-button"]');
+
+                        // Click the search button
+                        sendButton.click();
+                    }, 250);
+
+                    console.log('Setting search input value to: ', searchInput.value);
                 }, 250);
-
-                console.log('Setting search input value to: ', searchInput.value)
-            }, 500); // YOU SHOULD PROBABLY CHANGE THIS! (Set to something like 500) I only have it this high so my other extensions have time to turn on streaming :) 
+            }, 500);
         }
     }, 500);
 });
