@@ -1,7 +1,7 @@
 window.addEventListener('load', function() {
     // Wait 0.5 seconds for the page to load
     setTimeout(function() {
-      // Function that updates localStorage based on button text (Simpler code thanks to @sagepourpre (krobs) on Discord)
+      // Function that updates localStorage based on button text (Simpler code thanks to @sagepourpre (noff) on Discord)
       function updateStorage(key, newValue) {
         const oldValue = localStorage.getItem(key);
         localStorage.setItem(key, newValue); // Update local storage with new value
