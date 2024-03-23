@@ -40,7 +40,7 @@ function updateUsage(){
             const usageOffset = parseFloat((usage - parseFloat(openRouterOffset)).toFixed(2));
 
             const usageDisplay = document.querySelector('[data-element-id="usage-display"]');
-            usageDisplay.textContent = `Usage: ${usageOffset}`;
+            usageDisplay.textContent = `Usage: ${usageOffset}\$`;
             });
         });
 }
@@ -55,7 +55,7 @@ window.addEventListener('load', function() {
 
         // Add a quick enable/disable button for the streaming feature under data-element-id="current-chat-title"
         const usageDisplay = document.createElement('span');
-        usageDisplay.textContent = 'Usage: 0';
+        usageDisplay.textContent = 'Usage: -';
         usageDisplay.style.marginLeft = '10px';
         usageDisplay.style.cursor = 'pointer';
         usageDisplay.dataset.elementId = 'usage-display';

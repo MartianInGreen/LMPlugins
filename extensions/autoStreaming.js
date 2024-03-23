@@ -20,6 +20,15 @@ window.addEventListener('load', function() {
 
         const span = document.getElementsByClassName('truncate max-w-[100px] sm:max-w-lg')[0];
 
+        try {
+          const streamingButton = document.querySelector('[data-element-id="toggle-streaming-button"]');
+          if (newValue === true) {
+            streamingButton.style.color = 'green';
+          }else if (newValue === false) {
+            streamingButton.style.color = 'red';
+          }
+        }catch(e){}
+
         if (newValue === true) {
           span.style.color = 'green';
         }else if (newValue === false) {
@@ -51,7 +60,7 @@ window.addEventListener('load', function() {
         enableAutoStreamingButton.textContent = 'Auto-Streaming';
         enableAutoStreamingButton.style.marginLeft = '10px';
         enableAutoStreamingButton.style.cursor = 'pointer';
-        enableAutoStreamingButton.dataset.elementId = 'toggle-streaming-button';
+        enableAutoStreamingButton.dataset.elementId = 'toggle-auto-streaming-button';
         enableAutoStreamingButton.style.color = 'green';
         enableAutoStreamingButton.onclick = function() {
           // set the overrideAutoStreaming to opposite of current value

@@ -8,5 +8,5 @@ async function youtube(params){
         body: JSON.stringify({"video_id": video_id})
     });
 
-    return response.text();
+    return response.json();
 }
