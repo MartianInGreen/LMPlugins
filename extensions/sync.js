@@ -27,15 +27,14 @@ db.onsuccess = function(event) {
     var getAllKeys = store.getAllKeys();
     getAllKeys.onsuccess = function(event) {
         var keys = event.target.result;
+        syncObj['keyval'] = {}; // Initialize the 'keyval' subobject
         for (var i=0; i<keys.length; i++) {
-            if (keys[i].startsWith("TM_")) {
-                (function(key) {
-                    var get = store.get(key);
-                    get.onsuccess = function(event) {
-                        syncObj[key] = event.target.result;
-                    }
-                })(keys[i]);
-            }
+            (function(key) {
+                var get = store.get(key);
+                get.onsuccess = function(event) {
+                    syncObj['keyval'][key] = event.target.result; // Assign the result to the 'keyval' subobject
+                }
+            })(keys[i]);
         }
     }
 }
