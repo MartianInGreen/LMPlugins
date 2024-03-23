@@ -24,9 +24,6 @@ function getCookie(name) {
 const openRouterApiKey = getCookie('OPEN_ROUTER_API_KEY');
 const openRouterOffset = getCookie('OPEN_ROUTER_OFFSET');
 
-console.log(openRouterApiKey)
-console.log(openRouterOffset)
-
 let firstRun = false;
 
 function updateUsage(){
@@ -44,10 +41,6 @@ function updateUsage(){
 
             const usageDisplay = document.querySelector('[data-element-id="usage-display"]');
             usageDisplay.textContent = `Usage: ${usageOffset}`;
-
-            console.log(usage)
-            console.log(usageOffset)
-
             });
         });
 }
