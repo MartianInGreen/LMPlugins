@@ -368,7 +368,7 @@ def lambda_handler(event, context):
     if is_url == True:
         end_time = time.time()
 
-        webpage = scrape_and_process(query, query, 0)
+        webpage = scrape_and_process(query, "Summarize this webpage in detail!")
 
         return {
             'statusCode': 200,

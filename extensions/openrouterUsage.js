@@ -60,6 +60,11 @@ window.addEventListener('load', function() {
         usageDisplay.style.cursor = 'pointer';
         usageDisplay.dataset.elementId = 'usage-display';
 
+        // Set click link to https://openrouter.ai/account#analytics
+        usageDisplay.addEventListener('click', () => {
+            window.open('https://openrouter.ai/account', '_blank');
+        });
+
         const currentChatTitle = document.querySelector('[data-element-id="current-chat-title"]');
         const child = currentChatTitle.children[1];
 
