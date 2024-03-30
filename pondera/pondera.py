@@ -177,14 +177,18 @@ def search_brave(query, country, freshness_raw, focus):
         goggles_id = "&goggles_id=https://raw.githubusercontent.com/solso/goggles/main/academic_papers_search.goggle"
 
     freshness = ""
-    if freshness_raw == "24h":
-        freshness = "&freshness=pd"
-    elif freshness_raw == "week":
-        freshness = "&freshness=pw"
-    elif freshness_raw == "month":
-        freshness = "&freshness=pm"
-    elif freshness_raw == "year":
-        freshness = "&freshness=py"
+    if freshness_raw != None and freshness_raw in ["24h", "week", "month", "year"]:
+        # Map freshness to ["pd", "pw", "pm", "py"] / No freshness for "all"
+        freshness_map = {
+            "24h": "pd",
+            "week": "pw",
+            "month": "pm",
+            "year": "py",
+        }
+
+        freshness = freshness_map[freshness]
+
+        freshness = f"&freshness={freshness}"
 
     encoded_query = urllib.parse.quote(query)
     url = f"https://api.search.brave.com/res/v1/web/search?q={encoded_query}&results_filter=i{results_filter}&country={country}&search_lang=en&text_decorations=no&extra_snippets=true&count=20" + freshness + goggles_id
@@ -353,7 +357,17 @@ def search_images_and_video(query, country, type, freshness = None):
     encoded_query = urllib.parse.quote(query)
     url = f"https://api.search.brave.com/res/v1/{type}/search?q={encoded_query}&country={country}&search_lang=en&count=10"
 
-    if freshness != None and freshness in ["pd", "pw", "pm", "py"] and type == "videos":
+    if freshness != None and freshness in ["24h", "week", "month", "year"] and type == "videos":
+        # Map freshness to ["pd", "pw", "pm", "py"] / No freshness for "all"
+        freshness_map = {
+            "24h": "pd",
+            "week": "pw",
+            "month": "pm",
+            "year": "py",
+        }
+
+        freshness = freshness_map[freshness]
+
         url += f"&freshness={freshness}"
 
     print(url)
