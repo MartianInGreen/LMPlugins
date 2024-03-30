@@ -11,12 +11,12 @@
             "type": {
                 "type": "string",
                 "description": "The type of search to perform.",
-                "enum": ["quick", "deep"]
+                "enum": ["quick", "deep", "images", "videos"]
             },
             "focus": {
                 "type": "string",
-                "description": "The focus of the search.",
-                "enum": ["web", "news", "reddit", "academia", "video"]
+                "description": "The focus of the search. Required for quick/deep search types.",
+                "enum": ["web", "news", "reddit", "academia"]
             },
             "country": {
                 "type": "string",
@@ -29,6 +29,6 @@
                 "enum": ["24h", "week", "month", "year", "all"]
             }
         },
-        "required": ["query", "type", "focus", "country", "freshness"]
+        "required": ["query", "type", "freshness", "country"]
     }
 }

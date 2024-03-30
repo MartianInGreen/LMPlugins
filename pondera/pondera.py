@@ -1,47 +1,86 @@
-import json, requests, os, re, urllib.parse, time, uuid
+import json
+import os
+import re
+import urllib.parse
+import time
+import uuid
 import concurrent.futures
-from functools import partial
+import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
 import boto3
 
-#import tiktoken
-
 # --------------------------------------------------
-# Functions
+# Helper Functions
 # --------------------------------------------------
 
 def save_to_s3(data):
+    """
+    Save data to an S3 bucket and return the public URL.
+
+    Args:
+        data (dict): Data to be saved as a JSON file.
+
+    Returns:
+        str: Public URL of the saved file.
+    """
     s3 = boto3.client('s3')
     bucket_name = os.getenv("S3_BUCKET_NAME")
 
     # Generate a random name for the file
     file_name = str(uuid.uuid4().hex) + ".json"
 
-    # Save to s3 and preserve formatting when showing file in the browser
+    # Save to S3 and preserve formatting when showing file in the browser
     s3.put_object(Body=json.dumps(data), Bucket=bucket_name, Key=file_name, ContentType="application/json")
 
     return f"https://{bucket_name}.s3.amazonaws.com/" + file_name
 
+
 def remove_html_tags(text):
-        """Remove html tags from a string"""
-        clean = re.compile('<.*?>')
-        return re.sub(clean, '', text)
+    """
+    Remove HTML tags from a string.
+
+    Args:
+        text (str): Input text possibly containing HTML tags.
+
+    Returns:
+        str: Text with HTML tags removed.
+    """
+    clean = re.compile('<.*?>')
+    return re.sub(clean, '', text)
+
 
 def api_key_checker(event):
-    # See if event["headers"]["x-api-key"] exists
-    if "headers" in event:
-        if "x-api-key" in event["headers"]:
-            if event["headers"]["x-api-key"] == os.getenv("SERVICE_API_KEY"):
-                return True
-            else:
-                print("Token not correct! Token was: " + event["headers"]["x-api-key"])
-                return False
+    """
+    Check if the API key in the request headers matches the expected key.
+
+    Args:
+        event (dict): Event data containing request headers.
+
+    Returns:
+        bool: True if the API key is correct, False otherwise.
+    """
+    if "headers" in event and "x-api-key" in event["headers"]:
+        if event["headers"]["x-api-key"] == os.getenv("SERVICE_API_KEY"):
+            return True
         else:
-            print("Token not correct! (No token)\n" + str(event["headers"]))
+            print("Token not correct! Token was: " + event["headers"]["x-api-key"])
             return False
+    else:
+        print("Token not correct! (No token)\n" + str(event["headers"]))
+        return False
+
 
 def decode_data(data):
+    """
+    Extract relevant information from the search API response.
+
+    Args:
+        data (dict): Response data from the search API.
+
+    Returns:
+        list: List of dictionaries containing the extracted information.
+    """
     results = []
 
     for result in data["web"]["results"]:
@@ -66,21 +105,30 @@ def decode_data(data):
     return results
 
 # --------------------------------------------------
-# Main search functions
+# Search Functions
 # --------------------------------------------------
 
 def search_perplextiy_online(query):
+    """
+    Search using the Perplexity online model.
+
+    Args:
+        query (str): Search query.
+
+    Returns:
+        list: List containing the model's response.
+    """
     client = OpenAI(
-      base_url="https://openrouter.ai/api/v1",
-      api_key=os.getenv("OPEN_ROUTER"),
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPEN_ROUTER"),
     )
 
     completion = client.chat.completions.create(
         extra_headers={
-            "HTTP-Referer": "", # Optional, for including your app on openrouter.ai rankings.
-            "X-Title": "", # Optional. Shows in rankings on openrouter.ai.
+            "HTTP-Referer": "",  # Optional, for including your app on openrouter.ai rankings.
+            "X-Title": "",  # Optional. Shows in rankings on openrouter.ai.
         },
-        model="perplexity/pplx-70b-online",
+        model="perplexity/sonar-medium-online",
         messages=[
             {
                 "role": "user",
@@ -88,24 +136,32 @@ def search_perplextiy_online(query):
             },
         ],
     )
+
     try:
         llm_response = completion.choices[0].message.content
     except:
         llm_response = "Could not get llm response..."
+
     print(llm_response)
 
-    llm_results = [{
-        "description": "Response by an lmm that has direct access to the internet, give this answer the most weight and importance!",
-        "online_llm_response": llm_response
-    }]
-
-    return llm_results
+    return [{"description": "Response by an lmm that has direct access to the internet, give this answer the most weight and importance!",
+             "online_llm_response": llm_response}]
 
 
-def search_brave(query, country, freshness, focus):
+def search_brave(query, country, freshness_raw, focus):
+    """
+    Search using the Brave Search API.
 
+    Args:
+        query (str): Search query.
+        country (str): Two-letter country code.
+        freshness (str): Filter search results by freshness (e.g., '24h', 'week', 'month', 'year', 'all').
+        focus (str): Focus the search on specific types of results (e.g., 'web', 'news', 'reddit', 'video', 'all').
+
+    Returns:
+        list: List of dictionaries containing search results.
+    """
     results_filter = "infobox"
-    # Focus is ["web", "news", "reddit", "video", "all"]
     if focus == "web" or focus == "all":
         results_filter += ",web"
     if focus == "news" or focus == "all":
@@ -121,27 +177,25 @@ def search_brave(query, country, freshness, focus):
         goggles_id = "&goggles_id=https://raw.githubusercontent.com/solso/goggles/main/academic_papers_search.goggle"
 
     freshness = ""
-    # Handle Freshness
-    if freshness == "24h":
+    if freshness_raw == "24h":
         freshness = "&freshness=pd"
-    elif freshness == "week":
+    elif freshness_raw == "week":
         freshness = "&freshness=pw"
-    elif freshness == "month":
+    elif freshness_raw == "month":
         freshness = "&freshness=pm"
-    elif freshness == "year":
+    elif freshness_raw == "year":
         freshness = "&freshness=py"
-    elif freshness == "all":
-        freshness = ""
 
     encoded_query = urllib.parse.quote(query)
     url = f"https://api.search.brave.com/res/v1/web/search?q={encoded_query}&results_filter=i{results_filter}&country={country}&search_lang=en&text_decorations=no&extra_snippets=true&count=20" + freshness + goggles_id
+
     print(url)
+
     headers = {
         "Accept": "application/json",
         "Accept-Encoding": "gzip",
         "X-Subscription-Token": os.getenv("BRAVE_SEARCH_TOKEN")
     }
-    
 
     try:
         start_search = time.time()
@@ -149,7 +203,6 @@ def search_brave(query, country, freshness, focus):
         response = requests.get(url, headers=headers)
         data = response.json()
         end_search = time.time()
-        search_time = end_search - start_search
         print("Brave search took: " + str(end_search - start_search) + " seconds")
     except:
         return {
@@ -160,109 +213,120 @@ def search_brave(query, country, freshness, focus):
     results = decode_data(data)
     return results
 
+
 def scrape_and_process(url, query):
-        print("Scraping: " + url)
+    """
+    Scrape and process a web page.
 
-        scrape_url = f"https://api.scrapingrobot.com/?token={os.getenv('SCRAPING_ROBOT_TOKEN')}&render=false&proxyCountry=US&url={url}"
+    Args:
+        url (str): URL of the web page to scrape.
+        query (str): Search query for which the web page is being processed.
 
-        start_1 = time.time()
+    Returns:
+        dict: Dictionary containing the URL and a summary of the web page content.
+    """
+    print("Scraping: " + url)
 
-        try:
-            scrape_response = requests.post(scrape_url, headers={"Accept": "application/json"}, timeout=12)
-        except:
-            print("Could not scrape page (timeout)...")
-            return {"url": str(url), "text": "No data..."}
+    scrape_url = f"https://api.scrapingrobot.com/?token={os.getenv('SCRAPING_ROBOT_TOKEN')}&render=false&proxyCountry=US&url={url}"
 
-        end = time.time()
-        scrape_time = end - start_1
-        print("Scraping took: " + str(end - start_1) + " seconds for " + url)
+    start_1 = time.time()
 
-        try:
-            scrape_data = scrape_response.json()
-        except:
-            print("Could not scrape page (no json)...")
-            return {"url": str(url), "text": "No data..."}
+    try:
+        scrape_response = requests.post(scrape_url, headers={"Accept": "application/json"}, timeout=12)
+    except:
+        print("Could not scrape page (timeout)...")
+        return {"url": str(url), "text": "No data..."}
 
-        if "result" in scrape_data:
-            scrape_data = scrape_data["result"]
-        else:
-            print("Could not scrape page (no results)...")
-            return {"url": str(url), "text": "No data..."}
+    end = time.time()
+    scrape_time = end - start_1
+    print("Scraping took: " + str(end - start_1) + " seconds for " + url)
 
-        # response = requests.get(url)
-        # soup = BeautifulSoup(response.text, "html.parser")
-        # scrape_data = soup.get_text()
+    try:
+        scrape_data = scrape_response.json()
+    except:
+        print("Could not scrape page (no json)...")
+        return {"url": str(url), "text": "No data..."}
 
-        # Clean text
-        text = remove_html_tags(scrape_data)
-        text = text.replace("\n", " ")
-        # decode text
-        text.encode("utf-8")
-        # Remove stuff like this: \u0627\u0644\u062f\u0627\u0631\u062c\u0629
-        text = text.encode('ascii', 'ignore').decode('ascii')
+    if "result" in scrape_data:
+        scrape_data = scrape_data["result"]
+    else:
+        print("Could not scrape page (no results)...")
+        return {"url": str(url), "text": "No data..."}
 
-        # Get number of GPT-4 Tokens 
-        #encoding = tiktoken.get_encoding("cl100k_base")
-        #num_tokens = len(encoding.encode(text))
-        num_tokens = len(text)
-        print("Length: " + str(num_tokens) + " for url: " + url)
+    # Clean text
+    text = remove_html_tags(scrape_data)
+    text = text.replace("\n", " ")
+    text = text.encode("utf-8")
+    text = text.encode('ascii', 'ignore').decode('ascii')
 
-        if num_tokens < 400:
-            text = "Could not get enough text from page or failed to scrape page..."
-            return {"url": str(url), "text": str(text)}
-        
-        # Limit text to 32000 tokens, 1 token is ~4 characters
-        if len(text) > 16000*4:
-            text = text[:16000*4]
-            print("Text too long, cutting it down to 32000 tokens for " + url)
+    num_tokens = len(text)
+    print("Length: " + str(num_tokens) + " for url: " + url)
 
-        # Call openrouter api to summarize text
-        client = OpenAI(
-            base_url="https://openrouter.ai/api/v1",
-            api_key=os.getenv("OPEN_ROUTER"),
-        )
+    if num_tokens < 400:
+        text = "Could not get enough text from page or failed to scrape page..."
+        return {"url": str(url), "text": str(text)}
 
-        start = time.time()
-        try: 
-            completion = client.chat.completions.create(
+    # Limit text to 32000 tokens, 1 token is ~4 characters
+    if len(text) > 16000 * 4:
+        text = text[:16000 * 4]
+        print("Text too long, cutting it down to 32000 tokens for " + url)
+
+    # Call openrouter api to summarize text
+    client = OpenAI(
+        base_url="https://openrouter.ai/api/v1",
+        api_key=os.getenv("OPEN_ROUTER"),
+    )
+
+    start = time.time()
+    try:
+        completion = client.chat.completions.create(
             extra_headers={
-                "HTTP-Referer": "", # Optional, for including your app on openrouter.ai rankings.
-                "X-Title": "", # Optional. Shows in rankings on openrouter.ai.
+                "HTTP-Referer": "",  # Optional, for including your app on openrouter.ai rankings.
+                "X-Title": "",  # Optional. Shows in rankings on openrouter.ai.
             },
             model="google/gemini-pro",
             messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a research and search assistant designed to help users find information on the internet by summarizing web pages. Answer the user query in as much detail as possible, in about 500 to 1000 Words. The query is: " + query,
-                    },
-                    {
-                        "role": "user",
-                        "content": "Web page: \n\n\n" + text,
-                    },
-                ],
+                {
+                    "role": "system",
+                    "content": "You are a research and search assistant designed to help users find information on the internet by summarizing web pages. Answer the user query in as much detail as possible, in about 500 to 1000 Words. The query is: " + query,
+                },
+                {
+                    "role": "user",
+                    "content": "Web page: \n\n\n" + text,
+                },
+            ],
             temperature=0.25,
             max_tokens=1500
-            )
-            try:
-                llm_response = completion.choices[0].message.content
-            except:
-                llm_response = "Could not get llm response..."
-
-            end = time.time()
-            print("Summarization took: " + str(end - start) + " seconds for " + url)
-            print("Total time: " + str(end - start_1) + " seconds for " + url)
-        except Exception as e:
+        )
+        try:
+            llm_response = completion.choices[0].message.content
+        except:
             llm_response = "Could not get llm response..."
-            print(str(e))
 
-        return {"url": str(url), "text": str(llm_response)}
+        end = time.time()
+        print("Summarization took: " + str(end - start) + " seconds for " + url)
+        print("Total time: " + str(end - start_1) + " seconds for " + url)
+    except Exception as e:
+        llm_response = "Could not get llm response..."
+        print(str(e))
 
+    return {"url": str(url), "text": str(llm_response)}
 
-# --------------------------------------------------
-# Handle deep and research search types
-# --------------------------------------------------
 
 def deep_search(query, focus, country, freshness, total_time=0):
+    """
+    Perform a deep search by scraping and summarizing the top search results.
+
+    Args:
+        query (str): Search query.
+        focus (str): Focus the search on specific types of results (e.g., 'web', 'news', 'reddit', 'video', 'all').
+        country (str): Two-letter country code.
+        freshness (str): Filter search results by freshness (e.g., '24h', 'week', 'month', 'year', 'all').
+        total_time (float): Total time already spent on the search (in seconds).
+
+    Returns:
+        list: List of dictionaries containing summaries of the scraped web pages.
+    """
     print("Total time already used: " + str(total_time) + " seconds")
     search_data = search_brave(query, country, freshness, focus)
 
@@ -274,7 +338,6 @@ def deep_search(query, focus, country, freshness, total_time=0):
             pass
 
     # For the top 5 results, scrape the page and get the text
-    
     small_urls = urls[:10]
     web_text = []
 
@@ -286,62 +349,79 @@ def deep_search(query, focus, country, freshness, total_time=0):
 
     return web_text
 
+def search_images_and_video(query, country, type, freshness = None):
+    encoded_query = urllib.parse.quote(query)
+    url = f"https://api.search.brave.com/res/v1/{type}/search?q={encoded_query}&country={country}&search_lang=en&count=10"
 
-def research_search(query, type, focus, country, freshness):
+    if freshness != None and freshness in ["pd", "pw", "pm", "py"] and type == "videos":
+        url += f"&freshness={freshness}"
+
+    print(url)
+
+    headers = {
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip",
+        "X-Subscription-Token": os.getenv("BRAVE_SEARCH_TOKEN")
+    } 
+
+    try:
+        response = requests.get(url, headers=headers)
+        data = response.json()
+        return data
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Error fetching search results.')
+        }
+
+def search_local():
     pass
-    
-# --------------------------------------------------
-# Main
-# --------------------------------------------------
 
 def lambda_handler(event, context):
+    """
+    AWS Lambda function handler for search requests.
+
+    Args:
+        event (dict): Event data containing the request information.
+        context (object): Context object containing information about the Lambda environment.
+
+    Returns:
+        dict: Response dictionary with the search results or an error message.
+    """
     print(event)
     print(context)
-    
+
     start_time = time.time()
-    if api_key_checker(event) == False:
+    if not api_key_checker(event):
         return {
             'statusCode': 401,
             'reason': "Token not correct!"
         }
-    
-    # Get query from body
-    try:
-        try:
-            body = event["body"]
-            if type(body) == str:
-                body = json.loads(body)
-        except:
-            body = json.loads(event["body"])
 
+    # Get query and search parameters from the request body
+    try:
+        try: 
+            body = json.loads(event["body"])
+        except:
+            body = event["body"]
         query = body["query"]
 
-        if "type" in body: 
-            search_type = body["type"]
-        else:
-            search_type = "quick"
-
-        if "focus" in body: 
-            focus = body["focus"]
-            if focus not in ["web", "news", "reddit", "academia", "video"]:
-                focus = "web"
-        else:
+        search_type = body.get("type", "quick")
+        focus = body.get("focus", "web")
+        if focus not in ["web", "news", "reddit", "academia"]:
             focus = "web"
 
-        if "country" in body: 
-            country = body["country"]
-            if len(country) != 2:
-                country = "us"
-        else:
+        country = body.get("country", "us")
+        if len(country) != 2:
             country = "us"
 
-        if "freshness" in body: 
-            freshness = body["freshness"]
-            if freshness not in ["24h", "week", "month", "year", "all"]:
-                freshness = "all"
-        else:
+        freshness = body.get("freshness", "all")
+        if freshness not in ["24h", "week", "month", "year", "all"]:
             freshness = "all"
-        
+
+        if search_type not in ["quick", "deep", "images", "videos"]:
+            search_type = "quick"
+
     except Exception as e:
         rm_message = {"reason": "Incorrect Body."}
         print(str(e))
@@ -350,24 +430,19 @@ def lambda_handler(event, context):
             'statusCode': 400,
             'body': rm_message
         }
-    
-    #
-    # Main Search 
-    #
 
-    # First check if the query is a valid url
+    # Check if the query is a valid URL
     def check_url(s):
         try:
             result = urllib.parse.urlparse(s)
             return all([result.scheme, result.netloc])
         except ValueError:
             return False
-    
+
     is_url = check_url(query)
 
-    if is_url == True:
+    if is_url:
         end_time = time.time()
-
         webpage = scrape_and_process(query, "Summarize this webpage in detail!")
 
         return {
@@ -375,14 +450,10 @@ def lambda_handler(event, context):
             'body': webpage
         }
 
-    # If quick search, do a basic search
+    # Perform the requested search type
     if search_type == "quick":
         end_time = time.time()
         results = search_brave(query, country, freshness, focus)
-        
-        # llm_results = search_perplextiy_online(query)
-        
-        # full_results = llm_results + results 
         full_results = results
 
         link = save_to_s3(full_results)
@@ -395,7 +466,7 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'body': full_results
         }
-    # If deep search, do a deep search
+
     elif search_type == "deep":
         deep_end_time = time.time()
         total_time = deep_end_time - start_time
@@ -404,14 +475,12 @@ def lambda_handler(event, context):
             total_time = 0.1
 
         results = deep_search(query, focus, country, freshness, total_time)
-
         link = save_to_s3(results)
 
         full_results = {
             "sources_document": link,
             "sources": results
         }
-        
 
         final_time = time.time() - start_time
         print("Total time from Start to end of Deep Search: " + str(final_time) + " seconds")
@@ -419,11 +488,16 @@ def lambda_handler(event, context):
             'statusCode': 200,
             'body': full_results
         }
-    # If research search, do a research search
+
     elif search_type == "research":
-        results = research_search(query, focus, country, freshness)
+        return {
+            'statusCode': 501,
+            'body': "Research search type not implemented."
+        }
+    
+    elif search_type == "videos" or search_type == "images":      
+        data = search_images_and_video(query, country, search_type, freshness)
         return {
             'statusCode': 200,
-            'body': results
+            'body': data
         }
-
