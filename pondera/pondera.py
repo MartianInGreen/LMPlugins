@@ -260,8 +260,16 @@ def scrape_and_process(url, query):
     # Clean text
     text = remove_html_tags(scrape_data)
     text = text.replace("\n", " ")
-    text = text.encode("utf-8")
-    text = text.encode('ascii', 'ignore').decode('ascii')
+    try:
+        text = text.encode("utf-8")
+        #text = text.encode('ascii', 'ignore').decode('ascii')
+
+        # Clean text
+        text = text.decode("utf-8")
+    except:
+        print("Could not encode text...")
+        text = "Could not encode text..."
+        return {"url": str(url), "text": str(text)}
 
     num_tokens = len(text)
     print("Length: " + str(num_tokens) + " for url: " + url)
