@@ -1,8 +1,8 @@
-async function youtube(params){
+async function youtube(params, userSettings){
     const {video_id} = params;
 
     // Make request to the server
-    const response = await fetch("FUNCTION URL", {
+    const response = await fetch(userSettings.functionURL, {
         method: "POST",
         mode: "cors",
         body: JSON.stringify({"video_id": video_id})

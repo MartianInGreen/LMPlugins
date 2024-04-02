@@ -300,7 +300,7 @@ def scrape_and_process(url, query):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a research and search assistant designed to help users find information on the internet by summarizing web pages. Answer the user query in as much detail as possible, in about 500 to 1000 Words. The query is: " + query,
+                    "content": "You are a research and search assistant designed to help users find information on the internet by summarizing web pages. Answer the user query in as much detail as possible, in about 500 to 1000 Words. If you can not anwser the query just say 'No fitting information found'. The query is: " + query,
                 },
                 {
                     "role": "user",

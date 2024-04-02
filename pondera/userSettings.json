@@ -1,0 +1,11 @@
+[
+    {
+        "name": "functionURL",
+        "label": "Lambda Function URL"
+    },
+    {
+        "name": "apiKey",
+        "label": "API Key",
+        "type": "password"
+    }
+]

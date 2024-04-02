@@ -1,14 +1,24 @@
-async function wolfram(params){
+async function wolfram(params, userSettings){
     const {query} = params;
 
-    const response = await fetch("FUNCTION_URL", {
+    const response = await fetch(userSettings.functionURL, {
         method: "POST",
         mode: "cors",
         headers: {
-            "x-api-key": "YOUR API KEY"
+            "x-api-key": userSettings.apiKey
         },
         body: JSON.stringify({"query": query})
     });
 
-    return response.text();
+    response_text = await response.text();
+
+    // Find the "output" key in the response
+    markdown_data = "**Query:**\n```markdown\n" + query + "\n```\n" + "**Output:**\n```markdown\n" + response_text + "\n```";
+
+    return {
+        _TM_CUSTOM_OUTPUT: true,
+        type: 'markdown',
+        data: markdown_data,
+        response: response_text 
+    }
 }
