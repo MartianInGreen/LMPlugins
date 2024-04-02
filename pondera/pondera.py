@@ -273,7 +273,7 @@ def scrape_and_process(url, query):
     # Limit text to 32000 tokens, 1 token is ~4 characters
     if len(text) > 16000 * 4:
         text = text[:16000 * 4]
-        print("Text too long, cutting it down to 32000 tokens for " + url)
+        print("Text too long, cutting it down to 16000 * 4 characters for " + url)
 
     # Call openrouter api to summarize text
     client = OpenAI(
@@ -288,7 +288,7 @@ def scrape_and_process(url, query):
                 "HTTP-Referer": "",  # Optional, for including your app on openrouter.ai rankings.
                 "X-Title": "",  # Optional. Shows in rankings on openrouter.ai.
             },
-            model="google/gemini-pro",
+            model="anthropic/claude-3-haiku:beta",
             messages=[
                 {
                     "role": "system",
