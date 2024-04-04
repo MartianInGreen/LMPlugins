@@ -2,6 +2,8 @@ import subprocess, os, json, uuid, re
 import io, contextlib
 import boto3 
 import IPython
+from IPython.core.interactiveshell import InteractiveShell
+import textwrap
 
 def api_key_checker(event):
     # See if event["headers"]["x-api-key"] exists
@@ -38,8 +40,6 @@ def lambda_handler(event, context):
             'reason': "No code provided."
         }
     
-    print("code: " + code)
-    
     try:
         packages = body["packages"]
         print("packages: " + packages)
@@ -47,23 +47,42 @@ def lambda_handler(event, context):
         packages = None
 
     # Create a new StringIO object
-    print("Creating a new StringIO object")
     buffer = io.StringIO()
 
     # Redirect stdout to the buffer
-    with contextlib.redirect_stdout(buffer):
-        os.chdir("./tmp")
-        IPython.start_ipython(argv=['-c', f'{code}'])
+    try:
+        print("Starting Code Execution")
+        os.environ['IPYTHONDIR'] = '/tmp'
 
-    # Get the contents of the buffer
-    try: 
+        print("code: \n" + code)
+
+        shell = InteractiveShell.instance()
+
+        with contextlib.redirect_stdout(buffer):
+            try:
+                result = shell.run_cell(code)
+                if result.error_in_exec is not None:
+                    output = "IPython execution error: " + str(result.error_in_exec)
+                    print(output)
+                    return {
+                        'output': output
+                    }
+            except SystemExit as e:
+                output = "IPython execution exited with code: " + str(e.code)
+                print(output)
+                return {
+                    'output': output
+                }
+            
+        print("Got code results")
+    
+        # Get the contents of the buffer
         output = buffer.getvalue()
         output = re.sub(r'\x1b\[.*?[@-~]|\x1b].*?\x07', '', output)
-
-        if output == "" or output == None:
-            output = "No output"
-    except:
-        output = "No output"
+        print("Parsed code results")
+    except Exception as e:
+        print(e)
+        output = buffer.getvalue()
 
     return_output = {
         'output': output
@@ -72,17 +91,3 @@ def lambda_handler(event, context):
     print(return_output)
 
     return return_output
-
-if __name__ == "__main__":
-    os.environ["SERVICE_API_KEY"] = "test"
-
-    event = {
-        "headers": {
-            "x-api-key": os.getenv("SERVICE_API_KEY")
-        },
-        "body": {
-            "code": "from matplotlib import pyplot as plt\nplot = plt.plot([1, 2, 3, 4])\nplot.save('test.png')",
-        }
-    }
-
-    lambda_handler(event, None)
