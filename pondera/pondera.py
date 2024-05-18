@@ -83,26 +83,31 @@ def decode_data(data):
     """
     results = []
 
-    for result in data["web"]["results"]:
-        url = result.get("profile", {}).get("url", result.get("url", "could not find url"))
-        description = remove_html_tags(result.get("description", ""))
+    try:
+        for result in data["web"]["results"]:
+            url = result.get("profile", {}).get("url", result.get("url", "could not find url"))
+            description = remove_html_tags(result.get("description", ""))
 
-        deep_results = []
-        for snippet in result.get("extra_snippets", []):
-            cleaned_snippet = remove_html_tags(snippet)
-            deep_results.append({"snippets": cleaned_snippet})
+            deep_results = []
+            for snippet in result.get("extra_snippets", []):
+                cleaned_snippet = remove_html_tags(snippet)
+                deep_results.append({"snippets": cleaned_snippet})
 
-        result_entry = {
-            "description": description,
-            "url": url,
-        }
+            result_entry = {
+                "description": description,
+                "url": url,
+            }
 
-        if deep_results:
-            result_entry["deep_results"] = deep_results
+            if deep_results:
+                result_entry["deep_results"] = deep_results
 
-        results.append(result_entry)
+            results.append(result_entry)
 
-    return results
+        return results
+    except Exception as e:
+        print(str(e))
+        return ["No search results from Brave (or an error occured)..."]
+
 
 # --------------------------------------------------
 # Search Functions
@@ -128,11 +133,12 @@ def search_perplextiy_online(query):
             "HTTP-Referer": "",  # Optional, for including your app on openrouter.ai rankings.
             "X-Title": "",  # Optional. Shows in rankings on openrouter.ai.
         },
-        model="perplexity/sonar-medium-online",
+        model="perplexity/llama-3-sonar-large-32k-online",
+        max_tokens=500,
         messages=[
             {
                 "role": "user",
-                "content": "You are a research and search assistant. Answer the user query in as much detail as possible. The query is: " + query,
+                "content": str(query),
             },
         ],
     )
@@ -148,7 +154,7 @@ def search_perplextiy_online(query):
              "online_llm_response": llm_response}]
 
 
-def search_brave(query, country, freshness_raw, focus):
+def search_brave(query, country, freshness_raw, focus, search_perplexity = False):
     """
     Search using the Brave Search API.
 
@@ -186,7 +192,7 @@ def search_brave(query, country, freshness_raw, focus):
             "year": "py",
         }
 
-        freshness = freshness_map[freshness]
+        freshness = freshness_map[freshness_raw]
 
         freshness = f"&freshness={freshness}"
 
@@ -300,7 +306,7 @@ def scrape_and_process(url, query):
             messages=[
                 {
                     "role": "system",
-                    "content": "You are a research and search assistant designed to help users find information on the internet by summarizing web pages. Answer the user query in as much detail as possible, in about 500 to 1000 Words. If you can not anwser the query just say 'No fitting information found'. The query is: " + query,
+                    "content": "You are a research and search assistant designed to help users find information on the internet by summarizing web pages. Answer the user query in as much detail as possible, in about 500 to 1000 Words. The query is: " + query,
                 },
                 {
                     "role": "user",
@@ -389,8 +395,25 @@ def search_images_and_video(query, country, type, freshness = None):
     try:
         response = requests.get(url, headers=headers)
         data = response.json()
-        return data
-    except:
+        #return data
+        #print(json.dumps(data, indent=2))
+        
+        if type == "images":
+            formatted_data = {}
+            for i, result in enumerate(data["results"], start=1):
+                print(result)
+                formatted_data[f"image{i}"] = {
+                    "source": result["url"],
+                    "page_fetched": result["page_fetched"],
+                    "title": result["title"],
+                    "image_url": result["properties"]["url"]
+                }
+            
+            return formatted_data
+        else: 
+            return data
+    except Exception as e:
+        print(e)
         return {
             'statusCode': 400,
             'body': json.dumps('Error fetching search results.')
@@ -474,9 +497,13 @@ def lambda_handler(event, context):
 
     # Perform the requested search type
     if search_type == "quick":
-        end_time = time.time()
-        results = search_brave(query, country, freshness, focus)
-        full_results = results
+        with concurrent.futures.ThreadPoolExecutor() as executor:
+            results = executor.submit(search_brave, query, country, freshness, focus)
+            perplexity = executor.submit(search_perplextiy_online, query)
+
+        results = results.result()
+        perplexity = perplexity.result()
+        full_results = perplexity + results
 
         link = save_to_s3(full_results)
         full_results = {

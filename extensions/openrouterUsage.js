@@ -62,7 +62,7 @@ window.addEventListener('load', function() {
 
         // Set click link to https://openrouter.ai/account#analytics
         usageDisplay.addEventListener('click', () => {
-            window.open('https://openrouter.ai/account', '_blank');
+            window.open('https://openrouter.ai/credits', '_blank');
         });
 
         const currentChatTitle = document.querySelector('[data-element-id="current-chat-title"]');
