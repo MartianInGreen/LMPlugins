@@ -49,6 +49,8 @@ A simple YouTube transcript getter, useful for Video Summarization etc.
 
 An in-depth LLM search engine with multiple modes. 
 
+Chat example: https://chatgpt.com/share/98ab9702-369f-42e4-b982-23345dc7b4d7
+
 **Installation**
 - Packages: bs4, requests, re, openai, boto3
 - Set your "OPEN_ROUTER" API key
