@@ -9,6 +9,7 @@ import requests
 from bs4 import BeautifulSoup
 from openai import OpenAI
 import boto3
+from itertools import islice
 
 # --------------------------------------------------
 # Helper Functions
@@ -83,6 +84,9 @@ def decode_data(data):
     """
     results = []
 
+    #link = save_to_s3(data)
+    #print("Saved search results to: " + link)
+
     try:
         for result in data["web"]["results"]:
             url = result.get("profile", {}).get("url", result.get("url", "could not find url"))
@@ -134,7 +138,7 @@ def search_perplextiy_online(query):
             "X-Title": "",  # Optional. Shows in rankings on openrouter.ai.
         },
         model="perplexity/llama-3-sonar-large-32k-online",
-        max_tokens=500,
+        max_tokens=700,
         messages=[
             {
                 "role": "user",
@@ -154,7 +158,7 @@ def search_perplextiy_online(query):
              "online_llm_response": llm_response}]
 
 
-def search_brave(query, country, freshness_raw, focus, search_perplexity = False):
+def search_brave(query, country, freshness_raw, focus):
     """
     Search using the Brave Search API.
 
@@ -214,7 +218,9 @@ def search_brave(query, country, freshness_raw, focus, search_perplexity = False
         data = response.json()
         end_search = time.time()
         print("Brave search took: " + str(end_search - start_search) + " seconds")
-    except:
+    except Exception as e:
+        print("Error fetching search results...")
+        print(e)
         return {
             'statusCode': 400,
             'body': json.dumps('Error fetching search results.')
@@ -223,6 +229,39 @@ def search_brave(query, country, freshness_raw, focus, search_perplexity = False
     results = decode_data(data)
     return results
 
+def search_google(query, country, focus, freshness):
+    """
+    Search using the Google Search API.
+
+    Args:
+        query (str): Search query.
+        country (str): Two-letter country code.
+        focus (str): Focus the search on specific types of results (e.g., 'web', 'news', 'reddit', 'video', 'all').
+        freshness (str): Filter search results by freshness (e.g., '24h', 'week', 'month', 'year', 'all').
+
+    Returns:
+        list: List of dictionaries containing search results.
+    """
+    api_key = os.getenv("GOOGLE_SEARCH_API_KEY")
+    cse_id = os.getenv("GOOGLE_SEARCH_CSE_ID")
+
+    url = "https://www.googleapis.com/customsearch/v1"
+    params = {
+        'q': query,
+        'key': api_key,
+        'cx': cse_id,
+        'num': 3
+    }
+
+    try: 
+        response = requests.get(url, params=params)
+        response.raise_for_status()
+        search_results = response.json()
+    except:
+        return {
+            'statusCode': 400,
+            'body': json.dumps('Error fetching search results.')
+        }
 
 def scrape_and_process(url, query):
     """
@@ -397,6 +436,9 @@ def search_images_and_video(query, country, type, freshness = None):
         data = response.json()
         #return data
         #print(json.dumps(data, indent=2))
+
+        #link = save_to_s3(data)
+        #print("Saved image results to: " + link)
         
         if type == "images":
             formatted_data = {}
@@ -416,7 +458,7 @@ def search_images_and_video(query, country, type, freshness = None):
         print(e)
         return {
             'statusCode': 400,
-            'body': json.dumps('Error fetching search results.')
+            'body': json.dumps('Error fetching image results.')
         }
 
 def search_local():
@@ -490,22 +532,51 @@ def lambda_handler(event, context):
         end_time = time.time()
         webpage = scrape_and_process(query, "Summarize this webpage in detail!")
 
-        return {
-            'statusCode': 200,
-            'body': webpage
+        results = {
+            "query": query,
+            "sources": [webpage],
         }
+
+        saved_url = save_to_s3(results)
+
+        results = {
+            "query": query,
+            "sources_document": saved_url,
+            "sources": [webpage],
+        }
+
+        return results
 
     # Perform the requested search type
     if search_type == "quick":
         with concurrent.futures.ThreadPoolExecutor() as executor:
-            results = executor.submit(search_brave, query, country, freshness, focus)
             perplexity = executor.submit(search_perplextiy_online, query)
+            results = executor.submit(search_brave, query, country, freshness, focus)
+            time.sleep(2.5) # Fix for rate limit issue on free AI Plan, shouldn't affect actual search time since perplexity usually takes 5-10 seconds anyways
+            images = executor.submit(search_images_and_video, query, country, "images", freshness)
+            
 
         results = results.result()
         perplexity = perplexity.result()
-        full_results = perplexity + results
 
-        link = save_to_s3(full_results)
+        try:
+            images = images.result()
+            def get_first_three(formatted_data):
+                first_three = dict(islice(formatted_data.items(), 5))
+                return first_three
+            images = get_first_three(images)
+        except:
+            images = ["No image results..."]
+
+        full_results = [{
+            "perplexity_response": perplexity,
+            "search_results": results,
+            "images": images
+        }]
+
+        to_save_results = full_results + [{"Search took": str(time.time() - start_time)}]
+
+        link = save_to_s3(to_save_results)
         full_results = {
             "sources_document": link,
             "sources": full_results
